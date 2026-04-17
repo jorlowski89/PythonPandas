@@ -1,0 +1,21 @@
+{
+  "source": "api",
+  "observations": 4180,
+  "powiat_count": 370,
+  "year_min": 2014,
+  "year_max": 2024,
+  "columns": [
+    "unit_id",
+    "powiat",
+    "wojewodztwo",
+    "rok",
+    "unemployment_rate",
+    "crimes_total_per_1000",
+    "property_crimes_per_1000",
+    "violent_crimes_per_1000",
+    "crime_minus_unemployment"
+  ],
+  "messages": [
+    "Dane zostaly pobrane z API GUS BDL na poziomie powiatow."
+  ]
+}
