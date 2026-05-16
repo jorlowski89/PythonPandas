@@ -1,10 +1,11 @@
-przfrom __future__ import annotations
+from __future__ import annotations
 
 import streamlit as st
 
 from src.analysis_service import generate_conclusions, generate_regional_conclusions
 from src.data_loader import DataLoadError, load_project_data
 from src.help_content import render_page_help
+from src.ui_components import render_data_source_sidebar
 
 st.title("Wnioski")
 
@@ -26,10 +27,12 @@ render_page_help(
 )
 
 try:
-    bundle = load_project_data(prefer_api=True)
+    bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych z API GUS BDL. Szczegoly: {exc}")
+    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
     st.stop()
+
+render_data_source_sidebar(st, bundle)
 
 data = bundle["data"].copy()
 conclusions = generate_conclusions(data)

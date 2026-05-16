@@ -7,7 +7,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
-SAMPLE_DATA_DIR = DATA_DIR / "sample"
 ASSETS_DIR = BASE_DIR / "assets"
 
 YEARS = list(range(2014, 2025))
@@ -21,11 +20,6 @@ BDL_VARIABLE_IDS = {
     "crimes_total_per_1000": 398594,
     "property_crimes_per_1000": 498623,
     "violent_crimes_per_1000": 498624,
-}
-
-SAMPLE_FILES = {
-    "unemployment_rate": SAMPLE_DATA_DIR / "unemployment_sample.csv",
-    "crime_metrics": SAMPLE_DATA_DIR / "crime_sample.csv",
 }
 
 API_SNAPSHOT_PATH = PROCESSED_DATA_DIR / "powiat_analysis_dataset.csv"

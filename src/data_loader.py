@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -18,7 +19,6 @@ from src.config import (
     DEFAULT_POWIAT_LEVEL,
     INDICATOR_LABELS,
     RAW_DATA_DIR,
-    SAMPLE_FILES,
     VOIVODESHIP_CODES,
     YEARS,
     api_headers,
@@ -140,12 +140,16 @@ def load_cached_api_dataset() -> dict[str, Any]:
     if API_SNAPSHOT_METADATA_PATH.exists():
         metadata = json.loads(API_SNAPSHOT_METADATA_PATH.read_text(encoding="utf-8"))
 
-    metadata.setdefault("source", "api_cache")
+    metadata["source"] = "csv"
     metadata.setdefault("messages", [])
     metadata["messages"] = list(metadata["messages"])
-    metadata["messages"].append(
-        "Zaladowano ostatnia zapisana migawke danych pobranych z API GUS BDL."
-    )
+    fetched_at = metadata.get("fetched_at")
+    if fetched_at:
+        metadata["messages"].append(
+            f"Dane zaladowane z lokalnego CSV (pobrane z API: {fetched_at})."
+        )
+    else:
+        metadata["messages"].append("Dane zaladowane z lokalnego CSV.")
     metadata["observations"] = int(len(data))
     metadata["powiat_count"] = int(data["powiat"].nunique())
     metadata["year_min"] = int(data["rok"].min())
@@ -156,12 +160,6 @@ def load_cached_api_dataset() -> dict[str, Any]:
         "metadata": metadata,
         "indicator_labels": INDICATOR_LABELS,
     }
-
-
-def load_sample_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
-    unemployment_frame = pd.read_csv(SAMPLE_FILES["unemployment_rate"])
-    crime_frame = pd.read_csv(SAMPLE_FILES["crime_metrics"])
-    return unemployment_frame, crime_frame
 
 
 def load_api_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -196,55 +194,17 @@ def load_api_frames() -> tuple[pd.DataFrame, pd.DataFrame]:
     return unemployment_frame, crime_frame
 
 
-@lru_cache(maxsize=4)
-def load_project_data(
-    prefer_api: bool = True,
-    allow_api_cache: bool = True,
-    allow_sample_fallback: bool = False,
-) -> dict[str, Any]:
-    messages: list[str] = []
-    source = "api"
-
-    if prefer_api and has_minimum_api_configuration():
-        try:
-            unemployment_frame, crime_frame = load_api_frames()
-            messages.append(
-                "Dane zostaly pobrane z API GUS BDL na poziomie powiatow."
-            )
-        except (requests.RequestException, DataLoadError, ValueError) as exc:
-            if allow_api_cache and API_SNAPSHOT_PATH.exists():
-                cached_bundle = load_cached_api_dataset()
-                cached_bundle["metadata"]["messages"].insert(
-                    0,
-                    "Nie udalo sie odswiezyc danych bezposrednio z API GUS BDL. "
-                    f"Uzyto zapisanej migawki API. Szczegoly: {exc}",
-                )
-                return cached_bundle
-
-            if allow_sample_fallback:
-                messages.append(
-                    "Pobieranie z API GUS BDL nie powiodlo sie. Uzyto danych przykladowych. "
-                    f"Szczegoly: {exc}"
-                )
-                source = "sample"
-                unemployment_frame, crime_frame = load_sample_frames()
-            else:
-                raise DataLoadError(
-                    "Nie udalo sie pobrac danych z API GUS BDL i brak lokalnej migawki API. "
-                    f"Szczegoly: {exc}"
-                ) from exc
-    else:
-        if allow_api_cache and API_SNAPSHOT_PATH.exists():
-            return load_cached_api_dataset()
-
-        if allow_sample_fallback:
-            messages.append("Nie mozna skorzystac z API. Uzyto danych przykladowych.")
-            source = "sample"
-            unemployment_frame, crime_frame = load_sample_frames()
-        else:
-            raise DataLoadError(
-                "Brak poprawnej konfiguracji API GUS BDL i brak lokalnej migawki API."
-            )
+def _fetch_and_persist_from_api() -> dict[str, Any]:
+    if not has_minimum_api_configuration():
+        raise DataLoadError(
+            "Brak poprawnej konfiguracji API GUS BDL (BDL_VARIABLE_IDS)."
+        )
+    try:
+        unemployment_frame, crime_frame = load_api_frames()
+    except (requests.RequestException, DataLoadError, ValueError) as exc:
+        raise DataLoadError(
+            f"Nie udalo sie pobrac danych z API GUS BDL. Szczegoly: {exc}"
+        ) from exc
 
     unemployment_clean = prepare_unemployment_data(unemployment_frame)
     crime_clean = prepare_crime_data(crime_frame)
@@ -252,14 +212,18 @@ def load_project_data(
 
     save_frame(merged, API_SNAPSHOT_PATH)
 
+    fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
     metadata = {
-        "source": source,
+        "source": "api",
+        "fetched_at": fetched_at,
         "observations": int(len(merged)),
         "powiat_count": int(merged["powiat"].nunique()),
         "year_min": int(merged["rok"].min()),
         "year_max": int(merged["rok"].max()),
         "columns": merged.columns.tolist(),
-        "messages": messages,
+        "messages": [
+            f"Dane pobrane z API GUS BDL ({fetched_at})."
+        ],
     }
     save_api_metadata(metadata)
 
@@ -268,3 +232,22 @@ def load_project_data(
         "metadata": metadata,
         "indicator_labels": INDICATOR_LABELS,
     }
+
+
+@lru_cache(maxsize=4)
+def load_project_data(force_api: bool = False) -> dict[str, Any]:
+    """Wczytuje dane projektu.
+
+    - force_api=True: zawsze pobiera swiezo z API GUS BDL i zapisuje CSV.
+      Bledy API nie sa maskowane starymi danymi - leci DataLoadError.
+    - force_api=False (default): czyta z lokalnego CSV jesli istnieje.
+      Jesli CSV nie istnieje (pierwsze uruchomienie) - pobiera z API i zapisuje.
+    """
+    if force_api:
+        return _fetch_and_persist_from_api()
+
+    if API_SNAPSHOT_PATH.exists():
+        return load_cached_api_dataset()
+
+    # First-run: brak CSV, musimy pobrac z API
+    return _fetch_and_persist_from_api()

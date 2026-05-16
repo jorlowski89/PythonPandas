@@ -188,6 +188,7 @@ def between_within_decomposition(
 
     pooled = _safe_correlation(data["unemployment_rate"], data[crime_column])
 
+    # Between: korelacja na 16 sredniach wojewodzkich (jeden punkt = jedno wojewodztwo).
     voivodeship_means = data.groupby("wojewodztwo", as_index=False)[
         ["unemployment_rate", crime_column]
     ].mean()
@@ -195,6 +196,9 @@ def between_within_decomposition(
         voivodeship_means["unemployment_rate"], voivodeship_means[crime_column]
     )
 
+    # Within: od kazdej obserwacji odejmujemy srednia jej wojewodztwa.
+    # transform("mean") broadcastuje srednia grupy z powrotem do wszystkich wierszy,
+    # dzieki czemu korelacja liczona jest na odchyleniach od baseline'u regionalnego.
     data["unemployment_within"] = data["unemployment_rate"] - data.groupby("wojewodztwo")[
         "unemployment_rate"
     ].transform("mean")
@@ -281,6 +285,9 @@ def lagged_correlation(
 
 def _fit_residuals(group: pd.DataFrame, crime_column: str) -> pd.DataFrame:
     block = group.copy()
+    # OLS wymaga >=3 obserwacji i >=2 roznych wartosci X.
+    # Gdy regresja niemozliwa (np. male wojewodztwo z malym N), fallback do sredniej
+    # crime - wtedy residuum = odchylenie od sredniej grupy zamiast od linii trendu.
     if len(block) < 3 or block["unemployment_rate"].nunique() < 2:
         block["expected_crime"] = block[crime_column].mean()
     else:
@@ -305,6 +312,9 @@ def detect_outlier_powiats(
         return pd.DataFrame()
 
     if group_by and group_by in data.columns:
+        # Manualny loop zamiast .groupby().apply(): w pandas 2+ apply moze dodac
+        # kolumne grupujaca jako index level, ktory potem giniem przy reset_index(drop=True).
+        # concat list comprehension jest prostszy i deterministyczny.
         blocks = [
             _fit_residuals(block, crime_column)
             for _, block in data.groupby(group_by, sort=False)

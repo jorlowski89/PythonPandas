@@ -6,6 +6,7 @@ from src.analysis_service import detect_outlier_powiats
 from src.config import CRIME_COLUMNS, INDICATOR_LABELS
 from src.data_loader import DataLoadError, load_project_data
 from src.help_content import render_page_help
+from src.ui_components import render_data_source_sidebar
 from src.visualization import build_outlier_bar_figure
 
 st.title("Powiaty odstające")
@@ -24,10 +25,12 @@ render_page_help(
 )
 
 try:
-    bundle = load_project_data(prefer_api=True)
+    bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych z API GUS BDL. Szczegoly: {exc}")
+    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
     st.stop()
+
+render_data_source_sidebar(st, bundle)
 
 data = bundle["data"].copy()
 

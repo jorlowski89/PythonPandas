@@ -5,6 +5,7 @@ import streamlit as st
 from src.analysis_service import dataset_overview, global_correlations
 from src.data_loader import DataLoadError, load_project_data
 from src.help_content import render_glossary, render_usage
+from src.ui_components import render_data_source_sidebar
 
 st.set_page_config(
     page_title="Bezrobocie a przestępczość w powiatach",
@@ -13,10 +14,12 @@ st.set_page_config(
 )
 
 try:
-    bundle = load_project_data(prefer_api=True)
+    bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych z API GUS BDL. Szczegoly: {exc}")
+    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
     st.stop()
+
+render_data_source_sidebar(st, bundle)
 
 data = bundle["data"]
 metadata = bundle["metadata"]
@@ -26,15 +29,23 @@ correlations = global_correlations(data)
 st.title("Analiza zależności między bezrobociem a przestępczością w powiatach Polski")
 st.caption("Projekt zaliczeniowy z przedmiotu Analiza danych w Pandas, z warstwą prezentacyjną w Streamlit.")
 
+fetched_at = metadata.get("fetched_at")
 if metadata["source"] == "api":
-    st.success("Aplikacja korzysta aktualnie z danych pobranych z API GUS BDL.")
-elif metadata["source"] == "api_cache":
-    st.warning(
-        "Nie udalo sie odswiezyc danych online, dlatego pokazana jest ostatnia zapisana migawka danych pobranych z API GUS BDL."
+    st.success(
+        f"Dane wlasnie pobrane z API GUS BDL ({fetched_at})."
+        if fetched_at
+        else "Dane pobrane z API GUS BDL."
+    )
+elif metadata["source"] == "csv":
+    st.info(
+        f"Dane zaladowane z lokalnego CSV (pobrane z API: {fetched_at}). "
+        "Aby pobrac swieze dane, uzyj przycisku w panelu bocznym."
+        if fetched_at
+        else "Dane zaladowane z lokalnego CSV. Aby pobrac swieze dane, uzyj przycisku w panelu bocznym."
     )
 else:
     st.warning(
-        "Aplikacja korzysta z danych przykladowych. Ten tryb powinien byc potrzebny tylko awaryjnie."
+        f"Aplikacja korzysta z trybu: {metadata['source']}."
     )
 
 for message in metadata["messages"]:
