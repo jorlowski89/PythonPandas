@@ -80,3 +80,5 @@ config.local.py
 
 # Streamlit cache
 .streamlit/cache/
+
+*.md

@@ -69,6 +69,47 @@ def descriptive_statistics(
     return pd.DataFrame(stats_rows)
 
 
+def descriptive_statistics_by_voivodeship(
+    frame: pd.DataFrame,
+    columns: Iterable[str] | None = None,
+) -> pd.DataFrame:
+    metrics = list(columns or ["unemployment_rate", DEFAULT_ANALYSIS_CRIME_COLUMN])
+    rows: list[dict[str, object]] = []
+    for voivodeship, subset in frame.groupby("wojewodztwo"):
+        row: dict[str, object] = {
+            "wojewodztwo": voivodeship,
+            "liczba_powiatow": int(subset["powiat"].nunique()),
+            "liczba_obserwacji": int(len(subset)),
+        }
+        for column in metrics:
+            if column not in subset.columns:
+                continue
+            series = pd.to_numeric(subset[column], errors="coerce").dropna()
+            if series.empty:
+                row[f"{column}_srednia"] = np.nan
+                row[f"{column}_mediana"] = np.nan
+                row[f"{column}_std"] = np.nan
+                continue
+            row[f"{column}_srednia"] = float(series.mean())
+            row[f"{column}_mediana"] = float(series.median())
+            row[f"{column}_std"] = float(series.std(ddof=1)) if len(series) > 1 else 0.0
+        rows.append(row)
+    result = pd.DataFrame(rows)
+    if not result.empty:
+        result = result.sort_values("wojewodztwo").reset_index(drop=True)
+    return result
+
+
+def yearly_metrics_by_voivodeship(frame: pd.DataFrame) -> pd.DataFrame:
+    data = (
+        frame.groupby(["wojewodztwo", "rok"], as_index=False)[
+            ["unemployment_rate", *CRIME_COLUMNS]
+        ]
+        .mean(numeric_only=True)
+    )
+    return data.sort_values(["wojewodztwo", "rok"]).reset_index(drop=True)
+
+
 def yearly_average_metrics(frame: pd.DataFrame) -> pd.DataFrame:
     data = frame.groupby("rok", as_index=False)[
         ["unemployment_rate", *CRIME_COLUMNS]
@@ -116,6 +157,99 @@ def yearly_correlations(
     return pd.DataFrame(rows).sort_values("rok").reset_index(drop=True)
 
 
+def voivodeship_correlations(
+    frame: pd.DataFrame,
+    crime_column: str = DEFAULT_ANALYSIS_CRIME_COLUMN,
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for voivodeship, subset in frame.groupby("wojewodztwo"):
+        metrics = _safe_correlation(subset["unemployment_rate"], subset[crime_column])
+        rows.append(
+            {
+                "wojewodztwo": voivodeship,
+                "liczba_powiatow": int(subset["powiat"].nunique()),
+                **metrics,
+            }
+        )
+    return (
+        pd.DataFrame(rows)
+        .sort_values("pearson_r", ascending=False, na_position="last")
+        .reset_index(drop=True)
+    )
+
+
+def between_within_decomposition(
+    frame: pd.DataFrame,
+    crime_column: str = DEFAULT_ANALYSIS_CRIME_COLUMN,
+) -> pd.DataFrame:
+    data = keep_complete_rows(frame, ["unemployment_rate", crime_column, "wojewodztwo"]).copy()
+    if data.empty:
+        return pd.DataFrame()
+
+    pooled = _safe_correlation(data["unemployment_rate"], data[crime_column])
+
+    voivodeship_means = data.groupby("wojewodztwo", as_index=False)[
+        ["unemployment_rate", crime_column]
+    ].mean()
+    between = _safe_correlation(
+        voivodeship_means["unemployment_rate"], voivodeship_means[crime_column]
+    )
+
+    data["unemployment_within"] = data["unemployment_rate"] - data.groupby("wojewodztwo")[
+        "unemployment_rate"
+    ].transform("mean")
+    data["crime_within"] = data[crime_column] - data.groupby("wojewodztwo")[
+        crime_column
+    ].transform("mean")
+    within = _safe_correlation(data["unemployment_within"], data["crime_within"])
+
+    rows = [
+        {
+            "poziom": "Pooled (wszystkie obserwacje)",
+            "interpretacja": "Korelacja liczona na surowych danych, bez kontroli regionu.",
+            **pooled,
+        },
+        {
+            "poziom": "Between (miedzy wojewodztwami)",
+            "interpretacja": "Czy regiony o wyzszym sredniem bezrobociu maja tez wyzsza srednia przestepczosc.",
+            **between,
+        },
+        {
+            "poziom": "Within (wewnatrz wojewodztw)",
+            "interpretacja": "Czy w obrebie jednego regionu wyzsze bezrobocie idzie z wyzsza przestepczoscia (po odjeciu sredniej regionalnej).",
+            **within,
+        },
+    ]
+    return pd.DataFrame(rows)
+
+
+def voivodeship_lagged_correlations(
+    frame: pd.DataFrame,
+    crime_column: str = DEFAULT_ANALYSIS_CRIME_COLUMN,
+    lag_years: int = 1,
+) -> pd.DataFrame:
+    lagged = lagged_dataset(frame, crime_column=crime_column, lag_years=lag_years)
+    if lagged.empty:
+        return pd.DataFrame()
+
+    next_year_column = f"{crime_column}_next_year"
+    rows: list[dict[str, object]] = []
+    for voivodeship, subset in lagged.groupby("wojewodztwo"):
+        metrics = _safe_correlation(subset["unemployment_rate"], subset[next_year_column])
+        rows.append(
+            {
+                "wojewodztwo": voivodeship,
+                "liczba_par": int(metrics["observations"]),
+                **{k: v for k, v in metrics.items() if k != "observations"},
+            }
+        )
+    return (
+        pd.DataFrame(rows)
+        .sort_values("pearson_r", ascending=False, na_position="last")
+        .reset_index(drop=True)
+    )
+
+
 def lagged_dataset(
     frame: pd.DataFrame,
     crime_column: str = DEFAULT_ANALYSIS_CRIME_COLUMN,
@@ -145,22 +279,39 @@ def lagged_correlation(
     return metrics
 
 
+def _fit_residuals(group: pd.DataFrame, crime_column: str) -> pd.DataFrame:
+    block = group.copy()
+    if len(block) < 3 or block["unemployment_rate"].nunique() < 2:
+        block["expected_crime"] = block[crime_column].mean()
+    else:
+        slope, intercept = np.polyfit(
+            block["unemployment_rate"].to_numpy(),
+            block[crime_column].to_numpy(),
+            1,
+        )
+        block["expected_crime"] = intercept + slope * block["unemployment_rate"]
+    block["residual"] = block[crime_column] - block["expected_crime"]
+    return block
+
+
 def detect_outlier_powiats(
     frame: pd.DataFrame,
     crime_column: str = DEFAULT_ANALYSIS_CRIME_COLUMN,
     top_n: int = 8,
+    group_by: str | None = None,
 ) -> pd.DataFrame:
     data = keep_complete_rows(frame, ["unemployment_rate", crime_column]).copy()
     if len(data) < 3:
         return pd.DataFrame()
 
-    slope, intercept = np.polyfit(
-        data["unemployment_rate"].to_numpy(),
-        data[crime_column].to_numpy(),
-        1,
-    )
-    data["expected_crime"] = intercept + slope * data["unemployment_rate"]
-    data["residual"] = data[crime_column] - data["expected_crime"]
+    if group_by and group_by in data.columns:
+        blocks = [
+            _fit_residuals(block, crime_column)
+            for _, block in data.groupby(group_by, sort=False)
+        ]
+        data = pd.concat(blocks, ignore_index=True)
+    else:
+        data = _fit_residuals(data, crime_column)
 
     grouped = (
         data.groupby("powiat", as_index=False)
@@ -306,4 +457,122 @@ def generate_conclusions(frame: pd.DataFrame) -> dict[str, object]:
         "findings": findings,
         "hypotheses": hypotheses,
         "limitations": limitations,
+    }
+
+
+def generate_regional_conclusions(
+    frame: pd.DataFrame,
+    crime_column: str = DEFAULT_ANALYSIS_CRIME_COLUMN,
+) -> dict[str, object]:
+    voivodeship_corr = voivodeship_correlations(frame, crime_column=crime_column)
+    decomposition = between_within_decomposition(frame, crime_column=crime_column)
+    outliers_global = detect_outlier_powiats(
+        frame, crime_column=crime_column, top_n=5, group_by=None
+    )
+    outliers_regional = detect_outlier_powiats(
+        frame, crime_column=crime_column, top_n=5, group_by="wojewodztwo"
+    )
+
+    findings: list[str] = []
+
+    # 1. Global correlation — direction & strength
+    pooled_r = np.nan
+    if not decomposition.empty:
+        pooled_row = decomposition[decomposition["poziom"].str.startswith("Pooled")]
+        if not pooled_row.empty:
+            pooled_r = float(pooled_row["pearson_r"].iloc[0])
+
+    if not pd.isna(pooled_r):
+        direction = "ujemny" if pooled_r < 0 else "dodatni"
+        interpretation = (
+            "wyzsze bezrobocie wiaze sie z NIZSZA przestepczoscia"
+            if pooled_r < 0
+            else "wyzsze bezrobocie wiaze sie z WYZSZA przestepczoscia"
+        )
+        findings.append(
+            f"Globalna korelacja Pearsona = {pooled_r:.3f} (kierunek {direction}, sila "
+            f"{correlation_strength_label(pooled_r).lower()}). Oznacza to, ze w danych "
+            f"powiatowych z lat objetych analiza {interpretation} - co {'przeczy' if pooled_r < 0 else 'potwierdza'} "
+            "intuicyjnej hipotezie H1."
+        )
+
+    # 2. Between vs within — Simpson's paradox check
+    between_r = np.nan
+    within_r = np.nan
+    if not decomposition.empty:
+        between_row = decomposition[decomposition["poziom"].str.startswith("Between")]
+        within_row = decomposition[decomposition["poziom"].str.startswith("Within")]
+        if not between_row.empty:
+            between_r = float(between_row["pearson_r"].iloc[0])
+        if not within_row.empty:
+            within_r = float(within_row["pearson_r"].iloc[0])
+
+    if not pd.isna(between_r) and not pd.isna(within_r):
+        ratio_msg = ""
+        if within_r != 0:
+            ratio = abs(between_r) / max(abs(within_r), 1e-9)
+            if ratio >= 1.5:
+                ratio_msg = (
+                    f" Efekt jest okolo {ratio:.1f}x silniejszy miedzy regionami niz wewnatrz nich, "
+                    "co jest sygnalem paradoksu ekologicznego: agregacja powiatowa miesza efekty "
+                    "regionalne z indywidualnymi."
+                )
+            elif ratio <= 0.7:
+                ratio_msg = (
+                    " Efekt wewnatrz regionow jest silniejszy niz miedzy nimi - faktyczna dynamika "
+                    "rozgrywa sie wewnatrz regionow, niezaleznie od ich sredniego poziomu."
+                )
+        sign_flip = (between_r * within_r < 0)
+        flip_msg = (
+            " UWAGA: znak korelacji between i within sa przeciwne - klasyczny przypadek paradoksu Simpsona, "
+            "gdzie wniosek globalny nie obowiazuje na zadnym poziomie pojedynczym."
+            if sign_flip
+            else ""
+        )
+        findings.append(
+            f"Dekompozycja korelacji: between (miedzy wojewodztwami) = {between_r:.3f}, "
+            f"within (wewnatrz wojewodztw) = {within_r:.3f}.{ratio_msg}{flip_msg}"
+        )
+
+    # 3. Regional heterogeneity
+    if not voivodeship_corr.empty and voivodeship_corr["pearson_r"].notna().any():
+        valid = voivodeship_corr.dropna(subset=["pearson_r"])
+        top = valid.iloc[0]
+        bottom = valid.iloc[-1]
+        spread = float(top["pearson_r"]) - float(bottom["pearson_r"])
+        sign_flips = (
+            (valid["pearson_r"] > 0).any() and (valid["pearson_r"] < 0).any()
+        )
+        flip_note = (
+            " Co najmniej jedno wojewodztwo lamie kierunek korelacji - zaleznosc nie jest jednorodna w kraju."
+            if sign_flips
+            else ""
+        )
+        findings.append(
+            f"Heterogenicznosc regionalna jest duza: r waha sie od {float(top['pearson_r']):+.3f} "
+            f"({top['wojewodztwo']}) do {float(bottom['pearson_r']):+.3f} ({bottom['wojewodztwo']}); "
+            f"rozpietosc = {spread:.3f}.{flip_note}"
+        )
+
+    # 4. Outlier overlap (global vs regional trend)
+    if not outliers_global.empty and not outliers_regional.empty:
+        global_set = set(outliers_global["powiat"].tolist())
+        regional_set = set(outliers_regional["powiat"].tolist())
+        overlap = global_set & regional_set
+        only_global = global_set - regional_set
+        only_regional = regional_set - global_set
+        findings.append(
+            f"Wsrod top-5 outlierow: {len(overlap)} powiatow jest wyjatkowych zarowno wzgl. trendu globalnego, "
+            f"jak i regionalnego ({', '.join(sorted(overlap)) or 'brak'}). "
+            f"Tylko globalnie wyrozniaja sie: {', '.join(sorted(only_global)) or 'brak'}. "
+            f"Tylko regionalnie wyrozniaja sie: {', '.join(sorted(only_regional)) or 'brak'}. "
+            "Roznice pokazuja, ktore powiaty sa nietypowe na tle kraju, a ktore na tle wlasnego regionu."
+        )
+
+    return {
+        "findings": findings,
+        "decomposition": decomposition,
+        "voivodeship_correlations": voivodeship_corr,
+        "outliers_global": outliers_global,
+        "outliers_regional": outliers_regional,
     }

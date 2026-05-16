@@ -5,9 +5,23 @@ import streamlit as st
 from src.analysis_service import detect_outlier_powiats
 from src.config import CRIME_COLUMNS, INDICATOR_LABELS
 from src.data_loader import DataLoadError, load_project_data
+from src.help_content import render_page_help
 from src.visualization import build_outlier_bar_figure
 
 st.title("Powiaty odstające")
+
+render_page_help(
+    st,
+    page_key="powiaty_odstajace",
+    glossary_terms=[
+        "expected_crime",
+        "residual",
+        "srednia_reszta",
+        "outlier_score",
+        "kierunek",
+        "trend_globalny_vs_regionalny",
+    ],
+)
 
 try:
     bundle = load_project_data(prefer_api=True)
@@ -24,7 +38,23 @@ selected_crime_column = st.sidebar.selectbox(
 )
 top_n = st.sidebar.slider("Liczba powiatów", min_value=3, max_value=10, value=6)
 
-outliers = detect_outlier_powiats(data, crime_column=selected_crime_column, top_n=top_n)
+trend_mode = st.sidebar.radio(
+    "Trend odniesienia",
+    options=["Globalny (cały kraj)", "Regionalny (per województwo)"],
+    help=(
+        "Globalny: residuum liczone wzgledem jednej linii trendu dla calego kraju. "
+        "Regionalny: osobna linia trendu w kazdym wojewodztwie - pokazuje powiaty "
+        "wyrozniajace sie wewnatrz swojego regionu, niezaleznie od poziomu bezrobocia w regionie."
+    ),
+)
+group_by = "wojewodztwo" if trend_mode.startswith("Regionalny") else None
+
+outliers = detect_outlier_powiats(
+    data,
+    crime_column=selected_crime_column,
+    top_n=top_n,
+    group_by=group_by,
+)
 
 st.markdown(
     """
@@ -32,6 +62,7 @@ Powiat odstający to taki, w którym poziom przestępczości jest wyraźnie wyż
 od wartości sugerowanej przez ogólny trend zależności między bezrobociem a przestępczością.
 """
 )
+st.caption(f"Aktualny trend odniesienia: **{trend_mode}**.")
 
 if outliers.empty:
     st.warning("Brak wystarczających danych do wyznaczenia powiatów odstających.")

@@ -5,8 +5,25 @@ import streamlit as st
 
 from src.analysis_service import dataset_overview
 from src.data_loader import DataLoadError, load_project_data
+from src.help_content import render_page_help
 
 st.title("Dane")
+
+render_page_help(
+    st,
+    page_key="dane",
+    glossary_terms=[
+        "rok",
+        "powiat",
+        "wojewodztwo",
+        "unit_id",
+        "unemployment_rate",
+        "crimes_total_per_1000",
+        "property_crimes_per_1000",
+        "violent_crimes_per_1000",
+        "crime_minus_unemployment",
+    ],
+)
 
 try:
     bundle = load_project_data(prefer_api=True)

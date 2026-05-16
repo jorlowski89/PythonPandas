@@ -2,11 +2,40 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.analysis_service import descriptive_statistics, year_over_year_changes, yearly_average_metrics
+from src.analysis_service import (
+    descriptive_statistics,
+    descriptive_statistics_by_voivodeship,
+    year_over_year_changes,
+    yearly_average_metrics,
+    yearly_metrics_by_voivodeship,
+)
+from src.config import CRIME_COLUMNS, INDICATOR_LABELS
 from src.data_loader import DataLoadError, load_project_data
-from src.visualization import build_yearly_average_line_figure, build_yoy_change_figure
+from src.help_content import render_page_help
+from src.visualization import (
+    build_voivodeship_yearly_lines_figure,
+    build_yearly_average_line_figure,
+    build_yoy_change_figure,
+)
 
 st.title("Analiza opisowa")
+
+render_page_help(
+    st,
+    page_key="analiza_opisowa",
+    glossary_terms=[
+        "srednia",
+        "mediana",
+        "minimum",
+        "maksimum",
+        "odchylenie_std",
+        "liczba_obserwacji",
+        "liczba_powiatow",
+        "yoy_pct",
+        "unemployment_rate",
+        "crimes_total_per_1000",
+    ],
+)
 
 try:
     bundle = load_project_data(prefer_api=True)
@@ -105,3 +134,69 @@ st.dataframe(
     use_container_width=True,
     hide_index=True,
 )
+
+st.divider()
+st.subheader("Analiza regionalna (per województwo)")
+st.caption(
+    "Dodatkowe spojrzenie: te same wskazniki agregowane po wojewodztwach. Pozwala zauwazyc "
+    "regionalne kontrasty, ktore znikaja w sredniej krajowej."
+)
+
+regional_metric = st.selectbox(
+    "Wskaźnik do analizy regionalnej",
+    ["unemployment_rate", *CRIME_COLUMNS],
+    format_func=lambda column: INDICATOR_LABELS.get(column, column),
+)
+
+stats_by_voivodeship = descriptive_statistics_by_voivodeship(
+    filtered,
+    columns=["unemployment_rate", regional_metric] if regional_metric != "unemployment_rate" else ["unemployment_rate"],
+)
+
+if not stats_by_voivodeship.empty:
+    display_columns = {
+        "wojewodztwo": "Wojewodztwo",
+        "liczba_powiatow": "Liczba powiatow",
+        "liczba_obserwacji": "Liczba obserwacji",
+        "unemployment_rate_srednia": "Bezrobocie - srednia",
+        "unemployment_rate_mediana": "Bezrobocie - mediana",
+        "unemployment_rate_std": "Bezrobocie - std",
+    }
+    if regional_metric != "unemployment_rate":
+        display_columns[f"{regional_metric}_srednia"] = f"{INDICATOR_LABELS[regional_metric]} - srednia"
+        display_columns[f"{regional_metric}_mediana"] = f"{INDICATOR_LABELS[regional_metric]} - mediana"
+        display_columns[f"{regional_metric}_std"] = f"{INDICATOR_LABELS[regional_metric]} - std"
+
+    available = [col for col in display_columns if col in stats_by_voivodeship.columns]
+    renamed = stats_by_voivodeship[available].rename(columns=display_columns)
+    numeric_cols = [c for c in renamed.columns if renamed[c].dtype.kind in "fc"]
+    st.dataframe(
+        renamed.style.format({c: "{:.2f}" for c in numeric_cols}),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+yearly_voivodeship = yearly_metrics_by_voivodeship(filtered)
+
+available_voivodeships = sorted(yearly_voivodeship["wojewodztwo"].unique().tolist())
+selected_voivodeships = st.multiselect(
+    "Wojewodztwa na wykresie",
+    available_voivodeships,
+    default=available_voivodeships,
+    help="Odznacz wojewodztwa, zeby zmniejszyc liczbe linii.",
+)
+
+if selected_voivodeships:
+    filtered_yearly = yearly_voivodeship[
+        yearly_voivodeship["wojewodztwo"].isin(selected_voivodeships)
+    ]
+    st.plotly_chart(
+        build_voivodeship_yearly_lines_figure(
+            filtered_yearly,
+            regional_metric,
+            f"{INDICATOR_LABELS[regional_metric]} w czasie — per województwo",
+        ),
+        use_container_width=True,
+    )
+else:
+    st.info("Wybierz przynajmniej jedno wojewodztwo, aby zobaczyc wykres.")

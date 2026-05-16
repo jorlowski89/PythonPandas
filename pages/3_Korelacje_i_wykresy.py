@@ -2,16 +2,44 @@ from __future__ import annotations
 
 import streamlit as st
 
-from src.analysis_service import global_correlations, lagged_correlation, yearly_correlations
+from src.analysis_service import (
+    between_within_decomposition,
+    global_correlations,
+    lagged_correlation,
+    voivodeship_correlations,
+    voivodeship_lagged_correlations,
+    yearly_correlations,
+)
 from src.config import CRIME_COLUMNS, INDICATOR_LABELS
 from src.data_loader import DataLoadError, load_project_data
+from src.help_content import render_page_help
 from src.visualization import (
     build_lag_scatter_figure,
     build_scatter_figure,
+    build_voivodeship_correlation_bar_figure,
     build_yearly_correlation_figure,
 )
 
 st.title("Korelacje i wykresy")
+
+render_page_help(
+    st,
+    page_key="korelacje",
+    glossary_terms=[
+        "pearson_r",
+        "pearson_p",
+        "spearman_rho",
+        "spearman_p",
+        "skala_sily_korelacji",
+        "liczba_obserwacji",
+        "liczba_par",
+        "lag",
+        "pooled",
+        "between",
+        "within",
+        "paradoks_simpsona",
+    ],
+)
 
 try:
     bundle = load_project_data(prefer_api=True)
@@ -108,3 +136,99 @@ st.dataframe(
     use_container_width=True,
     hide_index=True,
 )
+
+st.divider()
+st.header("Analiza regionalna")
+st.caption(
+    "Te same korelacje rozbite po wojewodztwach. Pozwala sprawdzic, czy zaleznosc "
+    "jest jednolita w skali kraju, czy nieregularna - silna w jednych regionach, slaba w innych."
+)
+
+voivodeship_corr = voivodeship_correlations(filtered, crime_column=selected_crime_column)
+
+if voivodeship_corr.empty:
+    st.warning("Za malo danych do liczenia korelacji per wojewodztwo.")
+else:
+    reg_left, reg_right = st.columns([1.1, 1])
+    with reg_left:
+        st.plotly_chart(
+            build_voivodeship_correlation_bar_figure(
+                voivodeship_corr,
+                "pearson_r",
+                f"Korelacja Pearsona per wojewodztwo: bezrobocie vs {INDICATOR_LABELS[selected_crime_column]}",
+            ),
+            use_container_width=True,
+        )
+    with reg_right:
+        st.dataframe(
+            voivodeship_corr.style.format(
+                {
+                    "pearson_r": "{:.3f}",
+                    "pearson_p": "{:.4f}",
+                    "spearman_rho": "{:.3f}",
+                    "spearman_p": "{:.4f}",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+st.subheader("Dekompozycja: between vs within (test paradoksu Simpsona)")
+st.caption(
+    "Pooled = surowa korelacja na wszystkich obserwacjach. "
+    "Between = na sredniach wojewodzkich (efekt regionalny). "
+    "Within = po odjeciu sredniej regionalnej (faktyczna dynamika wewnatrz regionu). "
+    "Jesli between >> within, korelacja jest zjawiskiem miedzyregionalnym, a nie efektem zmian wewnatrz regionow."
+)
+
+decomposition = between_within_decomposition(filtered, crime_column=selected_crime_column)
+if decomposition.empty:
+    st.warning("Za malo danych do dekompozycji.")
+else:
+    st.dataframe(
+        decomposition.style.format(
+            {
+                "pearson_r": "{:.3f}",
+                "pearson_p": "{:.4f}",
+                "spearman_rho": "{:.3f}",
+                "spearman_p": "{:.4f}",
+            }
+        ),
+        use_container_width=True,
+        hide_index=True,
+    )
+
+st.subheader("Korelacje z opóźnieniem o 1 rok — per województwo")
+st.caption(
+    "Czy efekt opoznienia (H4) jest jednolity w kraju, czy widoczny tylko w niektorych regionach?"
+)
+
+lagged_by_voivodeship = voivodeship_lagged_correlations(
+    filtered, crime_column=selected_crime_column
+)
+if lagged_by_voivodeship.empty:
+    st.warning("Za malo danych do liczenia korelacji z opoznieniem per wojewodztwo.")
+else:
+    lag_left, lag_right = st.columns([1.1, 1])
+    with lag_left:
+        st.plotly_chart(
+            build_voivodeship_correlation_bar_figure(
+                lagged_by_voivodeship,
+                "pearson_r",
+                "Pearson r (bezrobocie t → przestępczość t+1) per województwo",
+            ),
+            use_container_width=True,
+        )
+    with lag_right:
+        st.dataframe(
+            lagged_by_voivodeship.style.format(
+                {
+                    "pearson_r": "{:.3f}",
+                    "pearson_p": "{:.4f}",
+                    "spearman_rho": "{:.3f}",
+                    "spearman_p": "{:.4f}",
+                }
+            ),
+            use_container_width=True,
+            hide_index=True,
+        )

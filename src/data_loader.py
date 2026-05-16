@@ -57,8 +57,10 @@ def _request_json(endpoint: str, params: list[tuple[str, Any]]) -> dict[str, Any
 
 
 def infer_wojewodztwo_from_unit_id(unit_id: object) -> str:
+    # BDL TERYT-derived powiat ID: position 0 is a level prefix,
+    # positions 1-2 hold the 2-digit voivodeship (województwo) code.
     text = str(unit_id or "")
-    return VOIVODESHIP_CODES.get(text[:2], "Nieznane")
+    return VOIVODESHIP_CODES.get(text[1:3], "Nieznane")
 
 
 def search_bdl_variables(query: str, page_size: int = 10) -> pd.DataFrame:
@@ -129,6 +131,11 @@ def load_cached_api_dataset() -> dict[str, Any]:
         raise DataLoadError("Brak lokalnej migawki danych pobranych z API.")
 
     data = pd.read_csv(API_SNAPSHOT_PATH)
+    if "unit_id" in data.columns:
+        # Reconcile voivodeship against the current inference function — older
+        # snapshots were saved with a buggy mapping and would otherwise persist
+        # wrong/"Nieznane" values until the cache is regenerated from the API.
+        data["wojewodztwo"] = data["unit_id"].map(infer_wojewodztwo_from_unit_id)
     metadata: dict[str, Any] = {}
     if API_SNAPSHOT_METADATA_PATH.exists():
         metadata = json.loads(API_SNAPSHOT_METADATA_PATH.read_text(encoding="utf-8"))

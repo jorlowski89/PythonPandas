@@ -4,6 +4,7 @@ import streamlit as st
 
 from src.analysis_service import dataset_overview, global_correlations
 from src.data_loader import DataLoadError, load_project_data
+from src.help_content import render_glossary, render_usage
 
 st.set_page_config(
     page_title="Bezrobocie a przestępczość w powiatach",
@@ -85,14 +86,50 @@ with right:
     )
 
 st.subheader("Jak korzystać z aplikacji")
-st.markdown(
-    """
-W menu po lewej stronie znajdują się kolejne sekcje projektu:
+render_usage(st, "home", expanded=True)
 
-1. `Dane` - podgląd i filtrowanie zbioru.
-2. `Analiza opisowa` - statystyki i zmiany rok do roku.
-3. `Korelacje i wykresy` - zależności statystyczne i wykresy.
-4. `Powiaty odstające` - jednostki wyłamujące się z trendu.
-5. `Wnioski` - podsumowanie hipotez i ograniczeń projektu.
+st.subheader("Mapa zakładek")
+
+map_left, map_right = st.columns(2)
+
+with map_left:
+    st.markdown(
+        """
+**1. Dane**
+Podglad surowego zbioru, filtry po latach i powiatach, liczba brakow danych
+w poszczegolnych kolumnach.
+
+**2. Analiza opisowa**
+Statystyki opisowe (srednia, mediana, std), srednie krajowe w czasie,
+dynamika rok do roku oraz **analiza regionalna** (statystyki i linie czasowe per wojewodztwo).
+
+**3. Korelacje i wykresy**
+Korelacje Pearsona i Spearmana w calym zbiorze i rok po roku, scatter plot z linia trendu,
+analiza z opoznieniem 1 rok. Sekcja regionalna: **korelacje per wojewodztwo**,
+**dekompozycja between/within** (test paradoksu Simpsona) i **lag per region**.
 """
+    )
+
+with map_right:
+    st.markdown(
+        """
+**4. Powiaty odstające**
+Ranking powiatow odbiegajacych od trendu zaleznosci bezrobocie/przestepczosc.
+Przelacznik **trend globalny vs regionalny** pozwala porownac odchylenia
+wzgl. calego kraju lub wzgl. wlasnego wojewodztwa.
+
+**5. Wnioski**
+Automatycznie generowana ocena czterech hipotez badawczych H1-H4 + dodatkowa sekcja
+**Wnioski z analizy regionalnej** (paradoks ekologiczny, heterogenicznosc, outliery).
+
+**Filtry** w panelu bocznym dzialaja niezaleznie na kazdej stronie - domyslnie
+zaznaczone sa wszystkie lata i powiaty.
+"""
+    )
+
+st.subheader("Słownik kluczowych pojęć")
+st.caption(
+    "Sklasyfikowane wszystkie nazwy kolumn i parametry uzyte w tabelach i wnioskach. "
+    "Rozwin sekcje aby zobaczyc objasnienia."
 )
+render_glossary(st, expanded=False)

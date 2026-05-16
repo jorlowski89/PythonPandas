@@ -158,6 +158,65 @@ def build_outlier_bar_figure(outliers_frame: pd.DataFrame, title: str) -> go.Fig
     return figure
 
 
+def build_voivodeship_yearly_lines_figure(
+    yearly_voivodeship_frame: pd.DataFrame,
+    metric: str,
+    title: str,
+) -> go.Figure:
+    figure = px.line(
+        yearly_voivodeship_frame,
+        x="rok",
+        y=metric,
+        color="wojewodztwo",
+        markers=True,
+        title=title,
+        labels={
+            "rok": "Rok",
+            metric: INDICATOR_LABELS.get(metric, metric),
+            "wojewodztwo": "Wojewodztwo",
+        },
+        template=PLOTLY_TEMPLATE,
+    )
+    figure.update_layout(
+        margin=dict(l=20, r=20, t=60, b=20),
+        height=520,
+        legend=dict(orientation="v", x=1.02, y=1, font=dict(size=10)),
+    )
+    return figure
+
+
+def build_voivodeship_correlation_bar_figure(
+    correlation_frame: pd.DataFrame,
+    value_column: str,
+    title: str,
+) -> go.Figure:
+    plot_data = correlation_frame.dropna(subset=[value_column]).sort_values(value_column)
+    if plot_data.empty:
+        return go.Figure()
+
+    plot_data = plot_data.assign(
+        znak=np.where(plot_data[value_column] >= 0, "Dodatnia", "Ujemna")
+    )
+    figure = px.bar(
+        plot_data,
+        x=value_column,
+        y="wojewodztwo",
+        color="znak",
+        orientation="h",
+        title=title,
+        labels={
+            value_column: "Wartosc korelacji",
+            "wojewodztwo": "Wojewodztwo",
+            "znak": "Kierunek",
+        },
+        template=PLOTLY_TEMPLATE,
+        color_discrete_map={"Dodatnia": "#0f766e", "Ujemna": "#dc2626"},
+    )
+    figure.add_vline(x=0, line_dash="dash", line_color="#94a3b8")
+    figure.update_layout(margin=dict(l=20, r=20, t=60, b=20), height=520)
+    return figure
+
+
 def build_yoy_change_figure(
     yearly_frame: pd.DataFrame,
     metric: str,
