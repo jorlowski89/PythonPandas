@@ -27,9 +27,9 @@ API_SNAPSHOT_METADATA_PATH = PROCESSED_DATA_DIR / "powiat_analysis_metadata.json
 
 INDICATOR_LABELS = {
     "unemployment_rate": "Stopa bezrobocia rejestrowanego (%)",
-    "crimes_total_per_1000": "Przestepstwa ogolem na 1000 mieszkancow",
-    "property_crimes_per_1000": "Przestepstwa przeciwko mieniu na 1000 mieszkancow",
-    "violent_crimes_per_1000": "Przestepstwa przeciwko zyciu i zdrowiu na 1000 mieszkancow",
+    "crimes_total_per_1000": "Przestępstwa ogółem na 1000 mieszkańców",
+    "property_crimes_per_1000": "Przestępstwa przeciwko mieniu na 1000 mieszkańców",
+    "violent_crimes_per_1000": "Przestępstwa przeciwko życiu i zdrowiu na 1000 mieszkańców",
 }
 
 CRIME_COLUMNS = [
@@ -44,20 +44,20 @@ PLOTLY_TEMPLATE = "plotly_white"
 COLOR_SEQUENCE = ["#0f766e", "#2563eb", "#dc2626", "#ca8a04", "#7c3aed"]
 
 VOIVODESHIP_CODES = {
-    "02": "Dolnoslaskie",
+    "02": "Dolnośląskie",
     "04": "Kujawsko-Pomorskie",
     "06": "Lubelskie",
     "08": "Lubuskie",
-    "10": "Lodzkie",
-    "12": "Malopolskie",
+    "10": "Łódzkie",
+    "12": "Małopolskie",
     "14": "Mazowieckie",
     "16": "Opolskie",
     "18": "Podkarpackie",
     "20": "Podlaskie",
     "22": "Pomorskie",
-    "24": "Slaskie",
-    "26": "Swietokrzyskie",
-    "28": "Warminsko-Mazurskie",
+    "24": "Śląskie",
+    "26": "Świętokrzyskie",
+    "28": "Warmińsko-Mazurskie",
     "30": "Wielkopolskie",
     "32": "Zachodniopomorskie",
 }

@@ -27,10 +27,8 @@ render_page_help(
 try:
     bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
+    st.error(f"Nie udało się załadować danych. Szczegóły: {exc}")
     st.stop()
-
-render_data_source_sidebar(st, bundle)
 
 data = bundle["data"].copy()
 
@@ -45,12 +43,15 @@ trend_mode = st.sidebar.radio(
     "Trend odniesienia",
     options=["Globalny (cały kraj)", "Regionalny (per województwo)"],
     help=(
-        "Globalny: residuum liczone wzgledem jednej linii trendu dla calego kraju. "
-        "Regionalny: osobna linia trendu w kazdym wojewodztwie - pokazuje powiaty "
-        "wyrozniajace sie wewnatrz swojego regionu, niezaleznie od poziomu bezrobocia w regionie."
+        "Globalny: residuum liczone względem jednej linii trendu dla całego kraju. "
+        "Regionalny: osobna linia trendu w każdym województwie — pokazuje powiaty "
+        "wyróżniające się wewnątrz swojego regionu, niezależnie od poziomu bezrobocia w regionie."
     ),
 )
 group_by = "wojewodztwo" if trend_mode.startswith("Regionalny") else None
+
+st.sidebar.markdown("---")
+render_data_source_sidebar(st, bundle)
 
 outliers = detect_outlier_powiats(
     data,

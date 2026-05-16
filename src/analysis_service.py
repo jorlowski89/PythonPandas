@@ -214,13 +214,13 @@ def between_within_decomposition(
             **pooled,
         },
         {
-            "poziom": "Between (miedzy wojewodztwami)",
-            "interpretacja": "Czy regiony o wyzszym sredniem bezrobociu maja tez wyzsza srednia przestepczosc.",
+            "poziom": "Between (między województwami)",
+            "interpretacja": "Czy regiony o wyższym średnim bezrobociu mają też wyższą średnią przestępczość.",
             **between,
         },
         {
-            "poziom": "Within (wewnatrz wojewodztw)",
-            "interpretacja": "Czy w obrebie jednego regionu wyzsze bezrobocie idzie z wyzsza przestepczoscia (po odjeciu sredniej regionalnej).",
+            "poziom": "Within (wewnątrz województw)",
+            "interpretacja": "Czy w obrębie jednego regionu wyższe bezrobocie idzie z wyższą przestępczością (po odjęciu średniej regionalnej).",
             **within,
         },
     ]
@@ -343,13 +343,13 @@ def detect_outlier_powiats(
 
     grouped["kierunek"] = np.where(
         grouped["srednia_reszta"] >= 0,
-        "Powyzej trendu",
-        "Ponizej trendu",
+        "Powyżej trendu",
+        "Poniżej trendu",
     )
     grouped["interpretacja"] = np.where(
         grouped["srednia_reszta"] >= 0,
-        "Przestepczosc jest wyzsza, niz sugerowalby poziom bezrobocia.",
-        "Przestepczosc jest nizsza, niz sugerowalby poziom bezrobocia.",
+        "Przestępczość jest wyższa, niż sugerowałby poziom bezrobocia.",
+        "Przestępczość jest niższa, niż sugerowałby poziom bezrobocia.",
     )
     return grouped.head(top_n).reset_index(drop=True)
 
@@ -359,9 +359,9 @@ def correlation_strength_label(value: float) -> str:
         return "Brak danych"
     absolute = abs(value)
     if absolute < 0.2:
-        return "Bardzo slaba"
+        return "Bardzo słaba"
     if absolute < 0.4:
-        return "Slaba"
+        return "Słaba"
     if absolute < 0.6:
         return "Umiarkowana"
     if absolute < 0.8:
@@ -375,7 +375,7 @@ def generate_conclusions(frame: pd.DataFrame) -> dict[str, object]:
     lagged = lagged_correlation(frame)
 
     total_row = global_corr[
-        global_corr["para_zmiennych"].str.contains("ogolem", case=False, na=False)
+        global_corr["para_zmiennych"].str.contains("ogółem", case=False, na=False)
     ]
     property_row = global_corr[
         global_corr["para_zmiennych"].str.contains("mieniu", case=False, na=False)
@@ -392,31 +392,31 @@ def generate_conclusions(frame: pd.DataFrame) -> dict[str, object]:
 
     findings = [
         (
-            "W calym zbiorze zaleznosc miedzy bezrobociem a przestepczoscia ogolem jest "
+            "W całym zbiorze zależność między bezrobociem a przestępczością ogółem jest "
             f"{correlation_strength_label(current_total_corr).lower()} "
             f"(Pearson r = {current_total_corr:.3f})."
             if not pd.isna(current_total_corr)
-            else "Nie udalo sie policzyc stabilnej korelacji dla przestepczosci ogolem."
+            else "Nie udało się policzyć stabilnej korelacji dla przestępczości ogółem."
         ),
         (
-            "Korelacje liczone osobno dla kolejnych lat zmieniaja sie, co sugeruje, ze "
-            "sila zaleznosci nie jest identyczna w calym badanym okresie."
+            "Korelacje liczone osobno dla kolejnych lat zmieniają się, co sugeruje, że "
+            "siła zależności nie jest identyczna w całym badanym okresie."
             if not pd.isna(yearly_spread) and yearly_spread > 0.15
-            else "Korelacje roczne sa dosc zblizone, wiec zaleznosc wyglada na względnie stabilna."
+            else "Korelacje roczne są dość zbliżone, więc zależność wygląda na względnie stabilną."
         ),
         (
-            "Dla przestepstw przeciwko mieniu zaleznosc jest silniejsza niz dla przestepczosci ogolem."
+            "Dla przestępstw przeciwko mieniu zależność jest silniejsza niż dla przestępczości ogółem."
             if not pd.isna(property_corr)
             and not pd.isna(current_total_corr)
             and property_corr > current_total_corr
-            else "Dla przestepstw przeciwko mieniu nie widac wyraznie silniejszej zaleznosci niz dla ogolu."
+            else "Dla przestępstw przeciwko mieniu nie widać wyraźnie silniejszej zależności niż dla ogółu."
         ),
         (
-            "Analiza opoznienia o 1 rok pokazuje silniejsza zaleznosc niz analiza bez opoznienia."
+            "Analiza opóźnienia o 1 rok pokazuje silniejszą zależność niż analiza bez opóźnienia."
             if not pd.isna(lagged_corr_value)
             and not pd.isna(current_total_corr)
             and lagged_corr_value > current_total_corr
-            else "Analiza opoznienia o 1 rok nie wzmacnia zaleznosci w sposob jednoznaczny."
+            else "Analiza opóźnienia o 1 rok nie wzmacnia zależności w sposób jednoznaczny."
         ),
     ]
 
@@ -424,14 +424,14 @@ def generate_conclusions(frame: pd.DataFrame) -> dict[str, object]:
         [
             {
                 "hipoteza": "H1: Wyższe bezrobocie wiąże się z wyższą przestępczością.",
-                "ocena": "Wstepnie potwierdzona"
+                "ocena": "Wstępnie potwierdzona"
                 if not pd.isna(current_total_corr) and current_total_corr > 0
                 else "Niepotwierdzona",
                 "uzasadnienie": findings[0],
             },
             {
                 "hipoteza": "H2: Zależność zmienia się w czasie.",
-                "ocena": "Czesciowo potwierdzona"
+                "ocena": "Częściowo potwierdzona"
                 if not pd.isna(yearly_spread) and yearly_spread > 0.15
                 else "Raczej niepotwierdzona",
                 "uzasadnienie": findings[1],
@@ -458,9 +458,9 @@ def generate_conclusions(frame: pd.DataFrame) -> dict[str, object]:
     )
 
     limitations = [
-        "Projekt bada zaleznosc statystyczna, a nie zwiazek przyczynowo-skutkowy.",
-        "Dla wersji demonstracyjnej aplikacja moze korzystac z danych przykładowych, jesli identyfikatory BDL nie zostaly uzupelnione.",
-        "Na poziom przestepczosci moga wplywac tez inne czynniki, np. urbanizacja, dochody czy struktura demograficzna.",
+        "Projekt bada zależność statystyczną, a nie związek przyczynowo-skutkowy.",
+        "Dla wersji demonstracyjnej aplikacja może korzystać z danych przykładowych, jeśli identyfikatory BDL nie zostały uzupełnione.",
+        "Na poziom przestępczości mogą wpływać też inne czynniki, np. urbanizacja, dochody czy struktura demograficzna.",
     ]
 
     return {
@@ -495,14 +495,14 @@ def generate_regional_conclusions(
     if not pd.isna(pooled_r):
         direction = "ujemny" if pooled_r < 0 else "dodatni"
         interpretation = (
-            "wyzsze bezrobocie wiaze sie z NIZSZA przestepczoscia"
+            "wyższe bezrobocie wiąże się z NIŻSZĄ przestępczością"
             if pooled_r < 0
-            else "wyzsze bezrobocie wiaze sie z WYZSZA przestepczoscia"
+            else "wyższe bezrobocie wiąże się z WYŻSZĄ przestępczością"
         )
         findings.append(
-            f"Globalna korelacja Pearsona = {pooled_r:.3f} (kierunek {direction}, sila "
-            f"{correlation_strength_label(pooled_r).lower()}). Oznacza to, ze w danych "
-            f"powiatowych z lat objetych analiza {interpretation} - co {'przeczy' if pooled_r < 0 else 'potwierdza'} "
+            f"Globalna korelacja Pearsona = {pooled_r:.3f} (kierunek {direction}, siła "
+            f"{correlation_strength_label(pooled_r).lower()}). Oznacza to, że w danych "
+            f"powiatowych z lat objętych analizą {interpretation} — co {'przeczy' if pooled_r < 0 else 'potwierdza'} "
             "intuicyjnej hipotezie H1."
         )
 
@@ -523,25 +523,25 @@ def generate_regional_conclusions(
             ratio = abs(between_r) / max(abs(within_r), 1e-9)
             if ratio >= 1.5:
                 ratio_msg = (
-                    f" Efekt jest okolo {ratio:.1f}x silniejszy miedzy regionami niz wewnatrz nich, "
-                    "co jest sygnalem paradoksu ekologicznego: agregacja powiatowa miesza efekty "
+                    f" Efekt jest około {ratio:.1f}x silniejszy między regionami niż wewnątrz nich, "
+                    "co jest sygnałem paradoksu ekologicznego: agregacja powiatowa miesza efekty "
                     "regionalne z indywidualnymi."
                 )
             elif ratio <= 0.7:
                 ratio_msg = (
-                    " Efekt wewnatrz regionow jest silniejszy niz miedzy nimi - faktyczna dynamika "
-                    "rozgrywa sie wewnatrz regionow, niezaleznie od ich sredniego poziomu."
+                    " Efekt wewnątrz regionów jest silniejszy niż między nimi — faktyczna dynamika "
+                    "rozgrywa się wewnątrz regionów, niezależnie od ich średniego poziomu."
                 )
         sign_flip = (between_r * within_r < 0)
         flip_msg = (
-            " UWAGA: znak korelacji between i within sa przeciwne - klasyczny przypadek paradoksu Simpsona, "
-            "gdzie wniosek globalny nie obowiazuje na zadnym poziomie pojedynczym."
+            " UWAGA: znak korelacji between i within są przeciwne — klasyczny przypadek paradoksu Simpsona, "
+            "gdzie wniosek globalny nie obowiązuje na żadnym poziomie indywidualnym."
             if sign_flip
             else ""
         )
         findings.append(
-            f"Dekompozycja korelacji: between (miedzy wojewodztwami) = {between_r:.3f}, "
-            f"within (wewnatrz wojewodztw) = {within_r:.3f}.{ratio_msg}{flip_msg}"
+            f"Dekompozycja korelacji: between (między województwami) = {between_r:.3f}, "
+            f"within (wewnątrz województw) = {within_r:.3f}.{ratio_msg}{flip_msg}"
         )
 
     # 3. Regional heterogeneity
@@ -554,14 +554,14 @@ def generate_regional_conclusions(
             (valid["pearson_r"] > 0).any() and (valid["pearson_r"] < 0).any()
         )
         flip_note = (
-            " Co najmniej jedno wojewodztwo lamie kierunek korelacji - zaleznosc nie jest jednorodna w kraju."
+            " Co najmniej jedno województwo łamie kierunek korelacji — zależność nie jest jednorodna w kraju."
             if sign_flips
             else ""
         )
         findings.append(
-            f"Heterogenicznosc regionalna jest duza: r waha sie od {float(top['pearson_r']):+.3f} "
+            f"Heterogeniczność regionalna jest duża: r waha się od {float(top['pearson_r']):+.3f} "
             f"({top['wojewodztwo']}) do {float(bottom['pearson_r']):+.3f} ({bottom['wojewodztwo']}); "
-            f"rozpietosc = {spread:.3f}.{flip_note}"
+            f"rozpiętość = {spread:.3f}.{flip_note}"
         )
 
     # 4. Outlier overlap (global vs regional trend)
@@ -572,11 +572,11 @@ def generate_regional_conclusions(
         only_global = global_set - regional_set
         only_regional = regional_set - global_set
         findings.append(
-            f"Wsrod top-5 outlierow: {len(overlap)} powiatow jest wyjatkowych zarowno wzgl. trendu globalnego, "
+            f"Wśród top-5 outlierów: {len(overlap)} powiatów jest wyjątkowych zarówno wzgl. trendu globalnego, "
             f"jak i regionalnego ({', '.join(sorted(overlap)) or 'brak'}). "
-            f"Tylko globalnie wyrozniaja sie: {', '.join(sorted(only_global)) or 'brak'}. "
-            f"Tylko regionalnie wyrozniaja sie: {', '.join(sorted(only_regional)) or 'brak'}. "
-            "Roznice pokazuja, ktore powiaty sa nietypowe na tle kraju, a ktore na tle wlasnego regionu."
+            f"Tylko globalnie wyróżniają się: {', '.join(sorted(only_global)) or 'brak'}. "
+            f"Tylko regionalnie wyróżniają się: {', '.join(sorted(only_regional)) or 'brak'}. "
+            "Różnice pokazują, które powiaty są nietypowe na tle kraju, a które na tle własnego regionu."
         )
 
     return {

@@ -29,7 +29,7 @@ render_page_help(
 try:
     bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
+    st.error(f"Nie udało się załadować danych. Szczegóły: {exc}")
     st.stop()
 
 render_data_source_sidebar(st, bundle)
@@ -48,7 +48,7 @@ st.divider()
 st.header("Wnioski z analizy regionalnej (per województwo)")
 st.caption(
     "Te wnioski powstają z rozbicia danych na 16 województw i są policzone dynamicznie "
-    "z aktualnie zaladowanego zbioru."
+    "z aktualnie załadowanego zbioru."
 )
 
 regional = generate_regional_conclusions(data)
@@ -60,10 +60,10 @@ for finding in regional["findings"]:
 if not regional["decomposition"].empty:
     st.subheader("Dekompozycja korelacji: between vs within")
     st.markdown(
-        "Test paradoksu Simpsona / ekologicznego: jesli korelacja **between** "
-        "(miedzy sredniami wojewodzkimi) jest wyraznie wieksza niz **within** "
-        "(po odjeciu sredniej regionalnej), to obserwowana zaleznosc jest gtownie "
-        "miedzyregionalna, a nie wynika ze zmian wewnatrz regionow."
+        "Test paradoksu Simpsona / ekologicznego: jeśli korelacja **between** "
+        "(między średnimi wojewódzkimi) jest wyraźnie większa niż **within** "
+        "(po odjęciu średniej regionalnej), to obserwowana zależność jest głównie "
+        "międzyregionalna, a nie wynika ze zmian wewnątrz regionów."
     )
     st.dataframe(
         regional["decomposition"].style.format(
@@ -99,7 +99,7 @@ if not regional["outliers_global"].empty and not regional["outliers_regional"].e
     st.subheader("Outliery: trend globalny vs regionalny")
     out_left, out_right = st.columns(2)
     with out_left:
-        st.caption("Top 5 wzgledem trendu globalnego")
+        st.caption("Top 5 względem trendu globalnego")
         st.dataframe(
             regional["outliers_global"][
                 ["powiat", "wojewodztwo", "srednia_reszta", "outlier_score"]
@@ -110,7 +110,7 @@ if not regional["outliers_global"].empty and not regional["outliers_regional"].e
             hide_index=True,
         )
     with out_right:
-        st.caption("Top 5 wzgledem trendu regionalnego (per województwo)")
+        st.caption("Top 5 względem trendu regionalnego (per województwo)")
         st.dataframe(
             regional["outliers_regional"][
                 ["powiat", "wojewodztwo", "srednia_reszta", "outlier_score"]
@@ -127,9 +127,9 @@ for limitation in conclusions["limitations"]:
     st.markdown(f"- {limitation}")
 
 st.markdown(
-    "- Analiza regionalna zaklada, ze wojewodztwo jest sensownym poziomem agregacji. "
-    "Bardziej szczegolowe efekty (np. miasto na prawach powiatu vs powiat ziemski) "
-    "moga wymagac osobnego ciecia."
+    "- Analiza regionalna zakłada, że województwo jest sensownym poziomem agregacji. "
+    "Bardziej szczegółowe efekty (np. miasto na prawach powiatu vs powiat ziemski) "
+    "mogą wymagać osobnego cięcia."
 )
 
 st.subheader("Komentarz końcowy")

@@ -29,10 +29,8 @@ render_page_help(
 try:
     bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
+    st.error(f"Nie udało się załadować danych. Szczegóły: {exc}")
     st.stop()
-
-render_data_source_sidebar(st, bundle)
 
 data = bundle["data"].copy()
 overview = dataset_overview(data)
@@ -47,6 +45,9 @@ selected_powiats = st.sidebar.multiselect(
     available_powiats,
     default=available_powiats,
 )
+
+st.sidebar.markdown("---")
+render_data_source_sidebar(st, bundle)
 
 filtered = data[
     data["rok"].isin(selected_years) & data["powiat"].isin(selected_powiats)

@@ -41,15 +41,17 @@ render_page_help(
 try:
     bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
+    st.error(f"Nie udało się załadować danych. Szczegóły: {exc}")
     st.stop()
-
-render_data_source_sidebar(st, bundle)
 
 data = bundle["data"].copy()
 
 available_years = sorted(data["rok"].unique().tolist())
 selected_years = st.sidebar.multiselect("Zakres lat", available_years, default=available_years)
+
+st.sidebar.markdown("---")
+render_data_source_sidebar(st, bundle)
+
 filtered = data[data["rok"].isin(selected_years)].copy()
 
 if filtered.empty:
@@ -141,8 +143,8 @@ st.dataframe(
 st.divider()
 st.subheader("Analiza regionalna (per województwo)")
 st.caption(
-    "Dodatkowe spojrzenie: te same wskazniki agregowane po wojewodztwach. Pozwala zauwazyc "
-    "regionalne kontrasty, ktore znikaja w sredniej krajowej."
+    "Dodatkowe spojrzenie: te same wskaźniki agregowane po województwach. Pozwala zauważyć "
+    "regionalne kontrasty, które znikają w średniej krajowej."
 )
 
 regional_metric = st.selectbox(
@@ -158,17 +160,17 @@ stats_by_voivodeship = descriptive_statistics_by_voivodeship(
 
 if not stats_by_voivodeship.empty:
     display_columns = {
-        "wojewodztwo": "Wojewodztwo",
-        "liczba_powiatow": "Liczba powiatow",
+        "wojewodztwo": "Województwo",
+        "liczba_powiatow": "Liczba powiatów",
         "liczba_obserwacji": "Liczba obserwacji",
-        "unemployment_rate_srednia": "Bezrobocie - srednia",
-        "unemployment_rate_mediana": "Bezrobocie - mediana",
-        "unemployment_rate_std": "Bezrobocie - std",
+        "unemployment_rate_srednia": "Bezrobocie — średnia",
+        "unemployment_rate_mediana": "Bezrobocie — mediana",
+        "unemployment_rate_std": "Bezrobocie — std",
     }
     if regional_metric != "unemployment_rate":
-        display_columns[f"{regional_metric}_srednia"] = f"{INDICATOR_LABELS[regional_metric]} - srednia"
-        display_columns[f"{regional_metric}_mediana"] = f"{INDICATOR_LABELS[regional_metric]} - mediana"
-        display_columns[f"{regional_metric}_std"] = f"{INDICATOR_LABELS[regional_metric]} - std"
+        display_columns[f"{regional_metric}_srednia"] = f"{INDICATOR_LABELS[regional_metric]} — średnia"
+        display_columns[f"{regional_metric}_mediana"] = f"{INDICATOR_LABELS[regional_metric]} — mediana"
+        display_columns[f"{regional_metric}_std"] = f"{INDICATOR_LABELS[regional_metric]} — std"
 
     available = [col for col in display_columns if col in stats_by_voivodeship.columns]
     renamed = stats_by_voivodeship[available].rename(columns=display_columns)
@@ -183,10 +185,10 @@ yearly_voivodeship = yearly_metrics_by_voivodeship(filtered)
 
 available_voivodeships = sorted(yearly_voivodeship["wojewodztwo"].unique().tolist())
 selected_voivodeships = st.multiselect(
-    "Wojewodztwa na wykresie",
+    "Województwa na wykresie",
     available_voivodeships,
     default=available_voivodeships,
-    help="Odznacz wojewodztwa, zeby zmniejszyc liczbe linii.",
+    help="Odznacz województwa, żeby zmniejszyć liczbę linii.",
 )
 
 if selected_voivodeships:
@@ -202,4 +204,4 @@ if selected_voivodeships:
         use_container_width=True,
     )
 else:
-    st.info("Wybierz przynajmniej jedno wojewodztwo, aby zobaczyc wykres.")
+    st.info("Wybierz przynajmniej jedno województwo, aby zobaczyć wykres.")

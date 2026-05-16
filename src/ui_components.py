@@ -5,22 +5,21 @@ from typing import Any
 from src.data_loader import DataLoadError, load_project_data
 
 SOURCE_LABELS: dict[str, str] = {
-    "api": "API GUS BDL (swieze)",
+    "api": "API GUS BDL (świeże)",
     "csv": "Lokalny CSV",
-    "sample": "Dane przykladowe",
+    "sample": "Dane przykładowe",
 }
 
 
 def render_data_source_sidebar(st_module, bundle: dict[str, Any]) -> None:
-    """Renderuje w sidebarze sekcje 'Zrodlo danych' z przyciskiem 'Pobierz z API'.
+    """Renderuje w sidebarze sekcję 'Źródło danych' z przyciskiem 'Pobierz z API'.
 
-    Po kliknieciu czyscimy lru_cache, wymuszamy fresh fetch (zapis CSV jako efekt
-    uboczny) i robimy rerun. Spojne dla wszystkich pages bez session_state.
+    Po kliknięciu czyścimy lru_cache, wymuszamy fresh fetch (zapis CSV jako efekt
+    uboczny) i robimy rerun. Spójne dla wszystkich pages bez session_state.
     """
     metadata = bundle["metadata"]
     sidebar = st_module.sidebar
-    sidebar.markdown("---")
-    sidebar.subheader("Zrodlo danych")
+    sidebar.subheader("Źródło danych")
 
     source_key = metadata.get("source", "?")
     sidebar.caption(f"Tryb: **{SOURCE_LABELS.get(source_key, source_key)}**")
@@ -31,12 +30,12 @@ def render_data_source_sidebar(st_module, bundle: dict[str, Any]) -> None:
     else:
         sidebar.caption("Ostatnie pobranie z API: nieznane")
 
-    if sidebar.button("Pobierz swieze dane z API", use_container_width=True):
+    if sidebar.button("Pobierz świeże dane z API", use_container_width=True):
         with sidebar.status("Pobieranie z GUS BDL..."):
             try:
                 load_project_data.cache_clear()
                 load_project_data(force_api=True)
             except DataLoadError as exc:
-                sidebar.error(f"Nie udalo sie pobrac: {exc}")
+                sidebar.error(f"Nie udało się pobrać: {exc}")
                 return
         st_module.rerun()

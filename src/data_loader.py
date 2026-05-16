@@ -49,8 +49,8 @@ def _request_json(endpoint: str, params: list[tuple[str, Any]]) -> dict[str, Any
     response.encoding = "utf-8"
     if response.status_code == 429:
         raise DataLoadError(
-            "API GUS BDL zwrocilo status 429 (limit zapytan). "
-            "Sprobuj ponownie pozniej albo ustaw zmienna srodowiskowa BDL_CLIENT_ID."
+            "API GUS BDL zwróciło status 429 (limit zapytań). "
+            "Spróbuj ponownie później albo ustaw zmienną środowiskową BDL_CLIENT_ID."
         )
     response.raise_for_status()
     return response.json()
@@ -146,10 +146,10 @@ def load_cached_api_dataset() -> dict[str, Any]:
     fetched_at = metadata.get("fetched_at")
     if fetched_at:
         metadata["messages"].append(
-            f"Dane zaladowane z lokalnego CSV (pobrane z API: {fetched_at})."
+            f"Dane załadowane z lokalnego CSV (pobrane z API: {fetched_at})."
         )
     else:
-        metadata["messages"].append("Dane zaladowane z lokalnego CSV.")
+        metadata["messages"].append("Dane załadowane z lokalnego CSV.")
     metadata["observations"] = int(len(data))
     metadata["powiat_count"] = int(data["powiat"].nunique())
     metadata["year_min"] = int(data["rok"].min())
@@ -203,7 +203,7 @@ def _fetch_and_persist_from_api() -> dict[str, Any]:
         unemployment_frame, crime_frame = load_api_frames()
     except (requests.RequestException, DataLoadError, ValueError) as exc:
         raise DataLoadError(
-            f"Nie udalo sie pobrac danych z API GUS BDL. Szczegoly: {exc}"
+            f"Nie udało się pobrać danych z API GUS BDL. Szczegóły: {exc}"
         ) from exc
 
     unemployment_clean = prepare_unemployment_data(unemployment_frame)

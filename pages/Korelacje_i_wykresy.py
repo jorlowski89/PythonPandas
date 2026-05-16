@@ -46,10 +46,8 @@ render_page_help(
 try:
     bundle = load_project_data()
 except DataLoadError as exc:
-    st.error(f"Nie udalo sie zaladowac danych. Szczegoly: {exc}")
+    st.error(f"Nie udało się załadować danych. Szczegóły: {exc}")
     st.stop()
-
-render_data_source_sidebar(st, bundle)
 
 data = bundle["data"].copy()
 
@@ -61,6 +59,9 @@ selected_crime_column = st.sidebar.selectbox(
 
 available_years = sorted(data["rok"].unique().tolist())
 selected_years = st.sidebar.multiselect("Lata", available_years, default=available_years)
+
+st.sidebar.markdown("---")
+render_data_source_sidebar(st, bundle)
 
 filtered = data[data["rok"].isin(selected_years)].copy()
 if filtered.empty:
@@ -144,14 +145,14 @@ st.dataframe(
 st.divider()
 st.header("Analiza regionalna")
 st.caption(
-    "Te same korelacje rozbite po wojewodztwach. Pozwala sprawdzic, czy zaleznosc "
-    "jest jednolita w skali kraju, czy nieregularna - silna w jednych regionach, slaba w innych."
+    "Te same korelacje rozbite po województwach. Pozwala sprawdzić, czy zależność "
+    "jest jednolita w skali kraju, czy nieregularna — silna w jednych regionach, słaba w innych."
 )
 
 voivodeship_corr = voivodeship_correlations(filtered, crime_column=selected_crime_column)
 
 if voivodeship_corr.empty:
-    st.warning("Za malo danych do liczenia korelacji per wojewodztwo.")
+    st.warning("Za mało danych do liczenia korelacji per województwo.")
 else:
     reg_left, reg_right = st.columns([1.1, 1])
     with reg_left:
@@ -159,7 +160,7 @@ else:
             build_voivodeship_correlation_bar_figure(
                 voivodeship_corr,
                 "pearson_r",
-                f"Korelacja Pearsona per wojewodztwo: bezrobocie vs {INDICATOR_LABELS[selected_crime_column]}",
+                f"Korelacja Pearsona per województwo: bezrobocie vs {INDICATOR_LABELS[selected_crime_column]}",
             ),
             use_container_width=True,
         )
@@ -180,14 +181,14 @@ else:
 st.subheader("Dekompozycja: between vs within (test paradoksu Simpsona)")
 st.caption(
     "Pooled = surowa korelacja na wszystkich obserwacjach. "
-    "Between = na sredniach wojewodzkich (efekt regionalny). "
-    "Within = po odjeciu sredniej regionalnej (faktyczna dynamika wewnatrz regionu). "
-    "Jesli between >> within, korelacja jest zjawiskiem miedzyregionalnym, a nie efektem zmian wewnatrz regionow."
+    "Between = na średnich wojewódzkich (efekt regionalny). "
+    "Within = po odjęciu średniej regionalnej (faktyczna dynamika wewnątrz regionu). "
+    "Jeśli between >> within, korelacja jest zjawiskiem międzyregionalnym, a nie efektem zmian wewnątrz regionów."
 )
 
 decomposition = between_within_decomposition(filtered, crime_column=selected_crime_column)
 if decomposition.empty:
-    st.warning("Za malo danych do dekompozycji.")
+    st.warning("Za mało danych do dekompozycji.")
 else:
     st.dataframe(
         decomposition.style.format(
@@ -204,14 +205,14 @@ else:
 
 st.subheader("Korelacje z opóźnieniem o 1 rok — per województwo")
 st.caption(
-    "Czy efekt opoznienia (H4) jest jednolity w kraju, czy widoczny tylko w niektorych regionach?"
+    "Czy efekt opóźnienia (H4) jest jednolity w kraju, czy widoczny tylko w niektórych regionach?"
 )
 
 lagged_by_voivodeship = voivodeship_lagged_correlations(
     filtered, crime_column=selected_crime_column
 )
 if lagged_by_voivodeship.empty:
-    st.warning("Za malo danych do liczenia korelacji z opoznieniem per wojewodztwo.")
+    st.warning("Za mało danych do liczenia korelacji z opóźnieniem per województwo.")
 else:
     lag_left, lag_right = st.columns([1.1, 1])
     with lag_left:

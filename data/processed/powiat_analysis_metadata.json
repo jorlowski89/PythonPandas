@@ -1,5 +1,6 @@
 {
   "source": "api",
+  "fetched_at": "2026-05-16T10:49:19+00:00",
   "observations": 4180,
   "powiat_count": 370,
   "year_min": 2014,
@@ -16,6 +17,6 @@
     "crime_minus_unemployment"
   ],
   "messages": [
-    "Dane zostaly pobrane z API GUS BDL na poziomie powiatow."
+    "Dane pobrane z API GUS BDL (2026-05-16T10:49:19+00:00)."
   ]
 }
