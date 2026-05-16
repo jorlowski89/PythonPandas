@@ -1,0 +1,82 @@
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Python environment files
+.python-version
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Type checker caches
+.mypy_cache/
+.pyre/
+.pytype/
+
+# Ruff / linting
+.ruff_cache/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Logs
+*.log
+
+# SQLite databases
+*.sqlite3
+*.db
+
+# Pandas generated exports
+*.csv
+*.xlsx
+*.parquet
+*.feather
+
+# VS Code
+.vscode/
+
+# PyCharm / IntelliJ
+.idea/
+
+# Local project settings
+*.swp
+*.swo
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# dotenv files
+.env.*
+!.env.example
+
+# Ignore secrets
+secrets.toml
+config.local.py
+
+# Streamlit cache
+.streamlit/cache/
